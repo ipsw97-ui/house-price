@@ -1,19 +1,29 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+
 <meta charset="UTF-8">
-<title>매매가격지수</title>
+
+<title>전국 매매가격지수</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
+
 body{
-    font-family: Arial;
+
+    font-family:Arial;
+
     margin:40px;
+
 }
+
 canvas{
-    max-width:1200px;
+
+    max-width:1300px;
+
 }
+
 </style>
 
 </head>
@@ -30,41 +40,70 @@ fetch("https://bitter-pine-7fb8.ipsw97.workers.dev/")
 .then(r=>r.json())
 .then(data=>{
 
-    const labels=[];
-    const values=[];
+    // "전국" 데이터만 선택
+    const national=data.filter(x=>x.region==="전국");
 
-    data.forEach(item=>{
+    // 오래된 날짜부터 정렬
+    national.sort((a,b)=>{
 
-        if(item.CLS_FULLNM==="전국"){
-
-            labels.push(item.WRTTIME_DESC);
-            values.push(Number(item.DTA_VAL));
-
-        }
+        return new Date(a.date.replace("년","-").replace("월",""))
+             - new Date(b.date.replace("년","-").replace("월",""));
 
     });
+
+    const labels=national.map(x=>x.date);
+
+    const values=national.map(x=>x.value);
 
     new Chart(document.getElementById("chart"),{
 
         type:"line",
 
         data:{
+
             labels:labels,
+
             datasets:[{
+
                 label:"전국 매매가격지수",
-                data:values
+
+                data:values,
+
+                borderWidth:2,
+
+                tension:0.2
+
             }]
+
         },
 
         options:{
-            responsive:true
+
+            responsive:true,
+
+            scales:{
+
+                y:{
+
+                    beginAtZero:false
+
+                }
+
+            }
+
         }
 
     });
+
+})
+.catch(err=>{
+
+    document.body.innerHTML+="<p>"+err+"</p>";
 
 });
 
 </script>
 
 </body>
+
 </html>
