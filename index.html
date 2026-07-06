@@ -1,117 +1,108 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<title>전국 매매가격지수</title>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<style>
-body{
-    font-family: Arial, sans-serif;
-    margin:40px;
-}
-
-h2{
-    text-align:center;
-}
-
-canvas{
-    width:100%;
-    max-width:1200px;
-    height:600px;
-}
-</style>
-
+  <meta charset="utf-8" />
+  <title>매매가격지수_아파트</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-
 <body>
+  <canvas id="chart"></canvas>
 
-<h2>전국 매매가격지수</h2>
+  <script>
+    const API_URL = "https://www.reb.or.kr/r-one/portal/stat/sttsDataPreviewList.do";
 
-<canvas id="chart"></canvas>
+    const formData = new URLSearchParams({
+      statblId: "A_2024_00045",
+      statId: "S234820263",
+      statTitle: "(월) 매매가격지수_아파트",
+      wrttimeStartYear: "2003",
+      wrttimeStartQt: "01",
+      wrttimeEndYear: "2026",
+      wrttimeEndQt: "05",
+      dtacycleCd: "MM",
+      tabMapVal: "KOREA",
+      topCateId: "700000",
+      optDivVal: "00",
+      chkItms: "100001",
+      chkClss: "500001,500002,500003,500008",
+      dtadvsVal: "OD,PR",
+      callTag: "F",
+      returnObjName: "btnRoneItm"
+    });
 
-<script>
+    async function loadData() {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"
+        },
+        body: formData
+      });
 
-const workerUrl="https://bitter-pine-7fb8.ipsw97.workers.dev/";
+      const json = await res.json();
+      const rows = json.DATA;
 
-fetch(workerUrl)
-.then(res=>res.text())
+      const datasets = rows.map(row => {
+        const points = [];
 
-.then(xmlText=>{
+        Object.keys(row).forEach(key => {
+          const match = key.match(/^COL_(\d{6})100001OD$/);
+          if (match) {
+            const ym = match[1];
+            const year = ym.slice(0, 4);
+            const month = ym.slice(4, 6);
+            points.push({
+              date: `${year}-${month}`,
+              value: Number(row[key])
+            });
+          }
+        });
 
-    const parser=new DOMParser();
+        points.sort((a, b) => a.date.localeCompare(b.date));
 
-    const xml=parser.parseFromString(xmlText,"text/xml");
+        return {
+          label: row.CATE1,
+          data: points.map(p => p.value),
+          dates: points.map(p => p.date),
+          fill: false,
+          tension: 0.2
+        };
+      });
 
-    const rows=xml.getElementsByTagName("row");
+      const labels = datasets[0].dates;
 
-    const labels=[];
-    const values=[];
-
-    for(let i=0;i<rows.length;i++){
-
-        const cls=rows[i]
-            .getElementsByTagName("CLS_FULLNM")[0]
-            ?.textContent
-            ?.trim();
-
-        if(cls!=="전국") continue;
-
-        const date=rows[i]
-            .getElementsByTagName("WRTTIME_DESC")[0]
-            ?.textContent
-            ?.trim();
-
-        const value=parseFloat(
-            rows[i]
-            .getElementsByTagName("DTA_VAL")[0]
-            ?.textContent
-        );
-
-        if(isNaN(value)) continue;
-
-        labels.push(date);
-        values.push(value);
-
+      new Chart(document.getElementById("chart"), {
+        type: "line",
+        data: {
+          labels,
+          datasets: datasets.map(({ label, data, fill, tension }) => ({
+            label,
+            data,
+            fill,
+            tension
+          }))
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: "매매가격지수_아파트"
+            }
+          },
+          scales: {
+            y: {
+              title: {
+                display: true,
+                text: "지수"
+              }
+            }
+          }
+        }
+      });
     }
 
-    console.log(labels);
-    console.log(values);
-
-    new Chart(
-        document.getElementById("chart"),
-        {
-            type:"line",
-            data:{
-                labels:labels,
-                datasets:[
-                    {
-                        label:"전국 매매가격지수",
-                        data:values,
-                        borderWidth:2,
-                        fill:false,
-                        tension:0.2
-                    }
-                ]
-            },
-            options:{
-                responsive:true,
-                maintainAspectRatio:false
-            }
-        }
-    );
-
-})
-.catch(err=>{
-
-    console.error(err);
-
-    document.body.innerHTML+="<p>데이터를 불러오지 못했습니다.</p>";
-
-});
-
-</script>
-
+    loadData();
+  </script>
 </body>
 </html>
