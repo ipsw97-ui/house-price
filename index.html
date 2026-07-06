@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>매매가격지수</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{
+    font-family: Arial;
+    margin:40px;
+}
+canvas{
+    max-width:1200px;
+}
+</style>
+
+</head>
+
+<body>
+
+<h2>전국 매매가격지수</h2>
+
+<canvas id="chart"></canvas>
+
+<script>
+
+fetch("https://reb-api.abc123.workers.dev")
+.then(r=>r.json())
+.then(data=>{
+
+    const labels=[];
+    const values=[];
+
+    data.forEach(item=>{
+
+        if(item.CLS_FULLNM==="전국"){
+
+            labels.push(item.WRTTIME_DESC);
+            values.push(Number(item.DTA_VAL));
+
+        }
+
+    });
+
+    new Chart(document.getElementById("chart"),{
+
+        type:"line",
+
+        data:{
+            labels:labels,
+            datasets:[{
+                label:"전국 매매가격지수",
+                data:values
+            }]
+        },
+
+        options:{
+            responsive:true
+        }
+
+    });
+
+});
+
+</script>
+
+</body>
+</html>
