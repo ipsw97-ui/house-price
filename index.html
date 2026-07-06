@@ -1,29 +1,26 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-
 <meta charset="UTF-8">
-
 <title>전국 매매가격지수</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-
 body{
-
-    font-family:Arial;
-
+    font-family: Arial, sans-serif;
     margin:40px;
+}
 
+h2{
+    text-align:center;
 }
 
 canvas{
-
-    max-width:1300px;
-
+    width:100%;
+    max-width:1200px;
+    height:600px;
 }
-
 </style>
 
 </head>
@@ -36,74 +33,85 @@ canvas{
 
 <script>
 
-fetch("https://bitter-pine-7fb8.ipsw97.workers.dev/")
-.then(r=>r.json())
-.then(data=>{
+const workerUrl="https://bitter-pine-7fb8.ipsw97.workers.dev/";
 
-    // "전국" 데이터만 선택
-    const national=data.filter(x=>x.region==="전국");
+fetch(workerUrl)
+.then(res=>res.text())
 
-    // 오래된 날짜부터 정렬
-    national.sort((a,b)=>{
+.then(xmlText=>{
 
-        return new Date(a.date.replace("년","-").replace("월",""))
-             - new Date(b.date.replace("년","-").replace("월",""));
+    const parser=new DOMParser();
 
-    });
+    const xml=parser.parseFromString(xmlText,"text/xml");
 
-    const labels=national.map(x=>x.date);
+    const rows=xml.getElementsByTagName("row");
 
-    const values=national.map(x=>x.value);
+    const labels=[];
+    const values=[];
 
-    new Chart(document.getElementById("chart"),{
+    for(let i=0;i<rows.length;i++){
 
-        type:"line",
+        const cls=rows[i]
+            .getElementsByTagName("CLS_FULLNM")[0]
+            ?.textContent
+            ?.trim();
 
-        data:{
+        if(cls!=="전국") continue;
 
-            labels:labels,
+        const date=rows[i]
+            .getElementsByTagName("WRTTIME_DESC")[0]
+            ?.textContent
+            ?.trim();
 
-            datasets:[{
+        const value=parseFloat(
+            rows[i]
+            .getElementsByTagName("DTA_VAL")[0]
+            ?.textContent
+        );
 
-                label:"전국 매매가격지수",
+        if(isNaN(value)) continue;
 
-                data:values,
+        labels.push(date);
+        values.push(value);
 
-                borderWidth:2,
+    }
 
-                tension:0.2
+    console.log(labels);
+    console.log(values);
 
-            }]
-
-        },
-
-        options:{
-
-            responsive:true,
-
-            scales:{
-
-                y:{
-
-                    beginAtZero:false
-
-                }
-
+    new Chart(
+        document.getElementById("chart"),
+        {
+            type:"line",
+            data:{
+                labels:labels,
+                datasets:[
+                    {
+                        label:"전국 매매가격지수",
+                        data:values,
+                        borderWidth:2,
+                        fill:false,
+                        tension:0.2
+                    }
+                ]
+            },
+            options:{
+                responsive:true,
+                maintainAspectRatio:false
             }
-
         }
-
-    });
+    );
 
 })
 .catch(err=>{
 
-    document.body.innerHTML+="<p>"+err+"</p>";
+    console.error(err);
+
+    document.body.innerHTML+="<p>데이터를 불러오지 못했습니다.</p>";
 
 });
 
 </script>
 
 </body>
-
 </html>
