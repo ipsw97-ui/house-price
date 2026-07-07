@@ -8,9 +8,11 @@
   <style>
     body { margin: 0; padding: 20px; font-family: sans-serif; }
     .wrap { width: 100%; height: 520px; }
+    #status { font-size: 13px; color: #666; margin-bottom: 8px; }
   </style>
 </head>
 <body>
+  <div id="status">데이터 불러오는 중...</div>
   <div class="wrap">
     <canvas id="chart"></canvas>
   </div>
@@ -19,41 +21,76 @@
     const API_URL = "https://bitter-pine-7fb8.ipsw97.workers.dev/";
 
     const formData = new URLSearchParams({
+      firParam: "",
+      deviceType: "",
       statblId: "A_2024_00045",
       statId: "S234820263",
       statTitle: "(월) 매매가격지수_아파트",
 
+      wrttimeMinYear: "2003",
+      wrttimeMaxYear: "2026",
+      wrttimeMinQt: "01",
+      wrttimeMaxQt: "12",
+
+      chartType: "",
+      chartStockType: "HISTORY",
+      chart23Type: "2D",
+      chartLegend: "",
+      alarmSetSeq: "",
+      usrTblSeq: "",
+      hisCycleNo: "",
+
+      tabMapVal: "KOREA",
+      infId: "",
+      topCateId: "700000",
+      optDivVal: "00",
       dtacycleCd: "MM",
+
       wrttimeStartYear: "2017",
       wrttimeStartQt: "06",
       wrttimeEndYear: "2026",
       wrttimeEndQt: "05",
 
-      chartStockType: "HISTORY",
-      chart23Type: "2D",
-      tabMapVal: "KOREA",
-      topCateId: "700000",
-      optDivVal: "00",
+      wrttimeType: "L",
+      wrttimeLastestVal: "10",
+      wrttimeOrder: "A",
+
+      uiChgVal: "",
+      dmPointVal: "",
+      tabGrpKeyword: "",
+      tabItmKeyword: "",
+      tabClsKeyword: "",
+      viewLocOpt: "B",
       optST: "H",
       optSC: "L",
       optSI: "H",
-      viewLocOpt: "B",
-      wrttimeType: "L",
-      wrttimeOrder: "A",
+      tabDvsKeyword: "",
+
+      alarmSetStatblNm: "",
+      alarmSetStatblEndDt: "",
+      usrTblStatblNm: "",
+      usrTblStatblExp: "",
+
       callTag: "F",
       returnObjName: "btnRoneItm",
+      tabTreeClsExpnOptCbo: "00",
+      expnGrpKeyword: "",
+      expnClsKeyword: "",
+      expnItmKeyword: "",
       callSheet: "IB8",
-
-      chkItms: "100001",
-      chkClss: "500001,500002,500003,500008",
-      dtadvsVal: "OD",
 
       hasClsAllChk: "N",
       hasItmAllChk: "Y",
-      hasGrpAllChk: "Y"
+      hasGrpAllChk: "Y",
+
+      chkItms: "100001",
+      chkClss: "500001,500002,500003,500008",
+      dtadvsVal: "OD"
     });
 
     async function loadData() {
+      const status = document.getElementById("status");
+
       const res = await fetch(API_URL, {
         method: "POST",
         headers: {
@@ -63,19 +100,32 @@
       });
 
       const json = await res.json();
+      console.log("REB response:", json);
+
       const rows = json.DATA || [];
+
+      if (!rows.length) {
+        status.textContent = "데이터가 없습니다. Worker 또는 요청 파라미터를 확인하세요.";
+        return;
+      }
 
       const datasets = rows.map(row => {
         const points = [];
 
         Object.keys(row).forEach(key => {
-          const match = key.match(/^COL_(\d{6})100001OD$/);
+          if (!key.startsWith("COL_") || !key.endsWith("OD")) return;
+
+          const match = key.match(/^COL_(\d{6})/);
           if (!match) return;
 
           const ym = match[1];
+          const value = Number(row[key]);
+
+          if (!Number.isFinite(value)) return;
+
           points.push({
             date: `${ym.slice(0, 4)}-${ym.slice(4, 6)}`,
-            value: Number(row[key])
+            value
           });
         });
 
@@ -91,6 +141,13 @@
       });
 
       const labels = datasets[0]?.dates || [];
+
+      if (!labels.length) {
+        status.textContent = "데이터 컬럼을 찾지 못했습니다. 콘솔의 REB response를 확인하세요.";
+        return;
+      }
+
+      status.textContent = `업데이트 완료: ${labels[0]} ~ ${labels[labels.length - 1]}`;
 
       new Chart(document.getElementById("chart"), {
         type: "line",
@@ -128,10 +185,9 @@
     }
 
     loadData().catch(err => {
-      document.body.innerHTML =
-        "<p>데이터를 불러오지 못했습니다. CORS 오류일 가능성이 있습니다.</p><pre>" +
-        err +
-        "</pre>";
+      console.error(err);
+      document.getElementById("status").textContent =
+        "데이터를 불러오지 못했습니다: " + err;
     });
   </script>
 </body>
